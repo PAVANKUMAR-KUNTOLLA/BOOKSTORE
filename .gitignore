@@ -61,5 +61,5 @@ Thumbs.db
 /media/*.docx
 /media/*.json
 /model/*
-db.sqlite3
+# db.sqlite3
 /column_mapping.json

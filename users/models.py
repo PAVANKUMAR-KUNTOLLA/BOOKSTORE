@@ -3,7 +3,7 @@ from crum import get_current_user
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from rest_framework.authtoken.models import Token
-
+from phonenumber_field.modelfields import PhoneNumberField
 # Create your models here.
 
 class UserManager(BaseUserManager):
@@ -34,6 +34,10 @@ class User(AbstractUser):
     username = None
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name']
+    
+    phone_no = PhoneNumberField(region="IN",blank=True)
+    address = models.CharField(max_length=255,blank=True)
+    college = models.CharField(max_length=255,blank=True,null=True)
 
     updated_at = models.DateTimeField(auto_now=True, editable=False)
     account_terminated = models.BooleanField(default=False, editable=False)

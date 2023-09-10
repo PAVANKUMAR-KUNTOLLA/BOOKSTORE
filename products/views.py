@@ -14,7 +14,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import *
 from users.models import User
-from test.settings import MEDIA_ROOT
+from Store.settings import MEDIA_ROOT
 
 from .helpers import get_products, update_user_product_info, place_order_helper, record_visit_history_helper
 
@@ -26,7 +26,7 @@ def serve_app(request, exception):
 
 
 @api_view(["GET","POST"])
-@authentication_classes([TokenAuthentication])
+# #@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def products(request):
     try:
@@ -49,7 +49,7 @@ def products(request):
         return Response(data=context, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["POST"])
-@authentication_classes([TokenAuthentication])
+#@authentication_classes([TokenAuthentication])
 @permission_classes([AllowAny])
 def record_visit_history(request):
     try:
@@ -72,7 +72,31 @@ def record_visit_history(request):
         return Response(data=context, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["POST"])
-@authentication_classes([TokenAuthentication])
+# @authentication_classes([TokenAuthenticationSafe])
+@permission_classes([IsAuthenticated])
+def edit_product(request):
+    try:
+        if request.method == "GET":
+            context = {"data":None, "status_flag":False, "status":status.HTTP_405_METHOD_NOT_ALLOWED, "message":"Only GET Method available"}
+            return Response(data=context, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        
+        elif request.method == "POST":
+            update_user_product_info(request)
+            data = get_products(request)
+            context = {"data":data, "status_flag":True, "status":status.HTTP_200_OK, "message":None}
+            return Response(data=context, status=status.HTTP_200_OK)
+        
+        else:
+            context = {"data":None, "status_flag":False, "status":status.HTTP_405_METHOD_NOT_ALLOWED, "message":"Only POST Method available"}
+            return Response(data=context, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    except Exception as excepted_message:
+        print(str(excepted_message))
+        context = {"data":None, "status_flag":False, "status":status.HTTP_400_BAD_REQUEST, "message":str(excepted_message)}
+        return Response(data=context, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+@api_view(["POST"])
+#@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def place_order(request):
     try:

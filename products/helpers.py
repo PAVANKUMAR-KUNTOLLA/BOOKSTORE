@@ -3,7 +3,7 @@ import copy
 import json 
 import pandas as pd
 
-from test.settings import DEFAULT_FROM_EMAIL
+from Store.settings import DEFAULT_FROM_EMAIL
 from django.core.mail import EmailMessage
 from django.db.models import Q
 from products.models import Product, Category
@@ -52,9 +52,10 @@ def get_products(request):
     products = Product.objects.all()
     
     if request.method == "POST":
+        if "search" in request_data and request_data["search"]:
+            products = products.filter(Q(title__startswith=request_data["search"].capitalize())|Q(category__name__startswith=request_data["search"]) | Q(title__icontains=request_data["search"].capitalize()))
        
-    
-        if any([request_data[each] != None for each in ["category", "price"] if each in request_data]):
+        elif any([request_data[each] != None for each in ["category", "price"] if each in request_data]):
             filter_dict = dict()
             if "category" in request_data.keys() and request_data["category"]:
                 filter_dict["category__name"] = request_data['category']
@@ -70,20 +71,17 @@ def get_products(request):
                 products = products.filter(**filter_dict)
 
     products = products.distinct().values()
-    if request.user.id:
-        user_products = UserProducts.objects.filter(user__id=request.user.id)
-    # else:
-    #     user_products = UserProducts.objects.filter(session__ip=get_client_ip(request=request))
+    user_products = UserProducts.objects.filter(user__id=request.user.id)
     
     return_dict = []
     for index, each in enumerate(products):
         is_product_related_to_user = False
         each_prod = {"id":each["id"], "title":each["title"], "description":each["description"], "price":each["price"]}
         each_prod["category"] = Category.objects.get(id=each["category_id"]).name
-        images = json.loads(each["images"])
-        for index2, each_img in enumerate(images):
-            each_prod[f'image_{index2}']=each_img
-           
+        each_prod["image"] = request.build_absolute_uri(f'media/{each["image"]}').replace("/api/v1/", "").replace("edit_product", "").replace("place_order", "").replace("products", "")
+        each_prod["author"] = each["author"]
+        each_prod["rating"] = each["rating"]
+        each_prod["author_description"] = each["author_description"]
         each_prod["is_favourite"] = True if user_products.filter(product__id=each["id"], is_favourite=True).exists() else False
         each_prod["is_item_in_cart"] = True if user_products.filter(product__id=each["id"], is_item_in_cart=True).exists() else False
         each_prod["quantity"] = user_products.filter(product__id=each["id"]).values_list("quantity", flat=True)[0] if user_products.filter(product__id=each["id"]).exists() else 0
@@ -97,22 +95,16 @@ def update_user_product_info(request):
         request_data = request.data.copy()
         id = request_data["id"]
         product = Product.objects.get(id=id)
-        if request.user.id:
-            user = User.objects.get(id=request.user.id)
-         
-            if UserProducts.objects.filter(user__id=user.id, product__id=id).exists():
-                user_product_ins = UserProducts.objects.get(user__id=request.user.id, product__id=product.id)
-            else:
-                user_product_ins = UserProducts.objects.create(user=user, product=product)
-                user.products.add(user_product_ins)
-                user.save()
-        else:
-            session_ins = Session.objects.get(ip=get_client_ip(request=request))
-            if UserProducts.objects.filter(session__id=session_ins.id, product__id=product.id).exists():
-                user_product_ins = UserProducts.objects.get(session__id=session_ins.id, product__id=product.id)
-            else:
-                user_product_ins  = UserProducts.objects.create(session=session_ins, product=product)
+       
+        user = User.objects.get(id=request.user.id)
         
+        if UserProducts.objects.filter(user__id=user.id, product__id=id).exists():
+            user_product_ins = UserProducts.objects.get(user__id=request.user.id, product__id=product.id)
+        else:
+            user_product_ins = UserProducts.objects.create(user=user, product=product)
+            user.products.add(user_product_ins)
+            user.save()
+
         if "is_favourite" in request_data.keys():
                 user_product_ins.is_favourite = request_data["is_favourite"]
         if "is_item_in_cart" in request_data.keys():
@@ -148,9 +140,6 @@ def place_order_helper(request):
             order_ins = UserOrderHistory.objects.create(user=user, product=product, quantity=user_product_ins.quantity, price=product.price)
             order_ins.save()
 
-            user.orders.add(order_ins)
-            user.save()
-
             total_amount += user_product_ins.quantity * user_product_ins.product.price
             message += f'\n{user_product_ins.product.title}                                           {user_product_ins.quantity}                     {user_product_ins.product.price}'
             
@@ -164,7 +153,7 @@ def place_order_helper(request):
             raise Exception(excepted_message)
         
     subject = 'Book Store - Order Placed successfully'
-    message += f"\n\n Total                                                    {total_amount}\n\n Thank you.visit again"
+    message += f"\n\n Total                                                    {total_amount} \n\n Your order will be shipped to the following Address \n{user.address}\n\n Thank you.visit again"
     from_email = DEFAULT_FROM_EMAIL
     to = [user.email, ]
     email = EmailMessage(subject, message, from_email, to)
@@ -175,27 +164,18 @@ def record_visit_history_helper(request):
         request_data = request.data.copy()
         product = Product.objects.get(id=request_data["id"])
         
-        if request.user.id:
-            user = User.objects.get(id=request.user.id)
-            if UserProducts.objects.filter(user__id=user.id, product__id=product.id).exists():
-                user_product_ins = UserProducts.objects.get(user__id=user.id, product__id=product.id)
-                user_product_ins.view_count = user_product_ins.view_count + 1
-            else:
-                user_product_ins  = UserProducts.objects.create(user=user, product=product)
-                user_product_ins.view_count=1
-                user.products.add(user_product_ins)
-                user.save()
-            user_product_ins.save()
+       
+        user = User.objects.get(id=request.user.id)
+        if UserProducts.objects.filter(user__id=user.id, product__id=product.id).exists():
+            user_product_ins = UserProducts.objects.get(user__id=user.id, product__id=product.id)
+            user_product_ins.view_count = user_product_ins.view_count + 1
         else:
-            session_ins = Session.objects.get(ip=get_client_ip(request=request))
-            if UserProducts.objects.filter(session__id=session_ins.id, product__id=product.id).exists():
-                session_product_ins = UserProducts.objects.get(session__id=session_ins.id, product__id=product.id)
-                session_product_ins.view_count = session_product_ins.view_count + 1
-            else:
-                session_product_ins  = UserProducts.objects.create(session=session_ins, product=product)
-                session_product_ins.view_count=1
-                session_ins.save()
-            session_product_ins.save()
+            user_product_ins  = UserProducts.objects.create(user=user, product=product)
+            user_product_ins.view_count=1
+            user.products.add(user_product_ins)
+            user.save()
+        user_product_ins.save()
+        
         return
     else:
         raise Exception("Product Id is required")

@@ -12,7 +12,10 @@ class Product(models.Model):
     category = models.ForeignKey('products.Category', on_delete=models.SET_NULL, blank=True, null=True)
     description = models.TextField()
     price = models.FloatField()
+    author = models.CharField(blank=True,max_length=255)
+    author_description = models.TextField(blank=True)
     image = models.ImageField(blank=True, null=True, upload_to=get_image_path)
+    rating = models.FloatField(null=True)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
     created_by_user = models.ForeignKey('users.User', on_delete=models.RESTRICT, editable=False)
 
