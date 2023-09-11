@@ -20,9 +20,6 @@ Book Categories
 Filters
 ![Category Level Filter](https://github.com/PAVANKUMAR-KUNTOLLA/BOOKSTORE/assets/109667063/23aae198-9e0b-49d4-a96d-c500a0e339fd)
 
-Book Details Page
-![Book Detail view](https://github.com/PAVANKUMAR-KUNTOLLA/BOOKSTORE/assets/109667063/158d808f-1acd-43ff-a3d7-514feee7c1de)
-
 Profile Page
 /109667063/ae447![Profile](https://github.com/PAVANKUMAR-KUNTOLLA/BOOKSTORE/assets/109667063/273d7bc4-6f1b-43fa-b665-77235cd81a92)
 184-89b1-43b7-965a-00178fff5224)
